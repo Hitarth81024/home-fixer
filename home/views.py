@@ -3020,7 +3020,7 @@ class VerifyStripePaymentAPIView(APIView):
 
 
 
-
+#payment
 
 # ✅ RESPONSE SCHEMA
 payment_status_response_schema = openapi.Schema(
