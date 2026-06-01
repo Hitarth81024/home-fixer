@@ -1136,9 +1136,9 @@
           {
             "name": "problem_description",
             "in": "formData",
-            "required": true,
+            "required": false,
             "type": "string",
-            "minLength": 1
+            "x-nullable": true
           },
           {
             "name": "services",
@@ -1864,28 +1864,6 @@
           "type": "string"
         }
       ]
-    },
-    "/customer/bookings/sent-requests/": {
-      "get": {
-        "operationId": "customer_bookings_sent-requests_list",
-        "description": "Get all booking requests sent by the customer (status = PENDING).",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/BookingHistory"
-              }
-            }
-          }
-        },
-        "tags": [
-          "customer"
-        ]
-      },
-      "parameters": []
     },
     "/login/": {
       "post": {

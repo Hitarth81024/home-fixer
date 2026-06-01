@@ -348,7 +348,7 @@ class Booking(models.Model):
     booking_long = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
 
     problem_title = models.CharField(max_length=255)
-    problem_description = models.TextField()
+    problem_description = models.TextField(blank=True, null=True)
 
     image_urls = models.JSONField(default=list, blank=True)
 

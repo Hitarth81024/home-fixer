@@ -15,13 +15,39 @@ if 'testserver' not in settings.ALLOWED_HOSTS:
 
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from home.models import CustomerProfile, Category
+from home.models import CustomerProfile, Category, ServicemanProfile
 
 User = get_user_model()
 
 def run_tests():
     client = APIClient()
     
+    # 0. Create test serviceman
+    sm_email = "test_serviceman_speed@example.com"
+    sm_phone = "9876543288"
+    User.objects.filter(email=sm_email).delete()
+    User.objects.filter(phone=sm_phone).delete()
+    sm_user = User.objects.create(
+        email=sm_email,
+        phone=sm_phone,
+        role="SERVICEMAN",
+        name="Test Serviceman",
+        is_verified=True
+    )
+    sm_profile = ServicemanProfile.objects.create(
+        user=sm_user,
+        is_online=True,
+        is_approved=True,
+        is_active=True,
+        is_available=True,
+        current_lat=Decimal("40.71280000"),
+        current_long=Decimal("-74.00600000"),
+        experience_years=5,
+        visiting_charge=Decimal("100.00"),
+        skills=["Plumbing"]
+    )
+    print(f"Created test serviceman: {sm_email}")
+
     # 1. Create/Get test customer user
     email = "test_customer_speed@example.com"
     phone = "9876543299"
@@ -62,6 +88,12 @@ def run_tests():
     client.force_authenticate(user=user)
     
     endpoints = [
+        ("Booking (Create)", "/api/booking/create/", "POST", {
+            "serviceman": sm_user.id,
+            "scheduled_date": "2026-06-01",
+            "scheduled_time": "10:30 AM",
+            "problem_title": "Test Booking"
+        }, "multipart"),
         ("Customer Addresses (List)", "/api/customer/addresses/", "GET", None, "json"),
         ("Customer Addresses (Create)", "/api/customer/addresses/", "POST", {
             "address": "456 Broadway, New York, NY",
@@ -75,7 +107,6 @@ def run_tests():
             "default_long": "-74.02000000"
         }, "multipart"),
         ("Customer Booking History", "/api/bookings/history/", "GET", None, "json"),
-        ("Customer Sent Requests", "/api/customer/bookings/sent-requests/", "GET", None, "json"),
         ("User Wallet Details", "/api/wallet/", "GET", None, "json"),
         ("Category List", "/api/categories/", "GET", None, "json"),
         ("Product List", "/api/products/", "GET", None, "json"),

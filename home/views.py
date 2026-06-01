@@ -7006,22 +7006,6 @@ class AdminWithdrawalActionAPI(APIView):
         
         return Response({"error": "Invalid action. Use 'approve' or 'reject'"}, status=400)
 
-class CustomerSentRequestAPI(ListAPIView):
-    """
-    Get all booking requests sent by the customer (status = PENDING).
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = BookingHistorySerializer
-
-    @swagger_auto_schema(
-        operation_summary="Customer: Get all sent booking requests",
-        tags=["Booking History"]
-    )
-    def get_queryset(self):
-        return Booking.objects.filter(
-            customer__user=self.request.user,
-            status="PENDING"
-        ).order_by("-created_at")
 
 class ServicemanVendorOrderAPI(ListAPIView):
     """

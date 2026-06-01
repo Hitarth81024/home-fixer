@@ -53,7 +53,6 @@ from .views import (
     CustomerProfileAPI,
     ServicemanProfileAPI,
     VendorProfileAPI,
-    CustomerSentRequestAPI,
     ServicemanVendorOrderAPI,
     VendorProductListAPI,
 )
@@ -198,6 +197,5 @@ urlpatterns = [
     path("admin/withdrawals/", views.AdminWithdrawalListAPI.as_view(), name="admin-withdrawals"),
     path("admin/withdrawals/<int:pk>/", views.AdminWithdrawalActionAPI.as_view(), name="admin-withdrawal-action"),
     path("admin/servicemen/bookings/", AdminServicemanBookingAPI.as_view(), name="admin-serviceman-bookings"),
-    path("customer/bookings/sent-requests/", CustomerSentRequestAPI.as_view(), name="customer-sent-requests"),
     path("serviceman/vendor-orders/", ServicemanVendorOrderAPI.as_view(), name="serviceman-vendor-orders"),
 ]
