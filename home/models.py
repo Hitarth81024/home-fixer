@@ -143,6 +143,11 @@ class ServicemanProfile(models.Model):
         
         super().save(*args, **kwargs)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_active', 'is_approved', 'is_available']),
+        ]
+
 class VendorProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
     is_approved = models.BooleanField(default=False)  # ✅ NEW FIELD
@@ -238,6 +243,12 @@ class Category(models.Model):
     visiting_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0, null=True, blank=True)
     is_trending = models.BooleanField(default=False)
     trending_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_trending', 'trending_order']),
+            models.Index(fields=['category_type']),
+        ]
 
     def save(self, *args, **kwargs):
         is_existing = self.pk is not None
@@ -507,6 +518,12 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['price']),
+            models.Index(fields=['-created_at']),
+        ]
 
 class BookingItem(models.Model):
 
