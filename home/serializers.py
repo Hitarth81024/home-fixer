@@ -591,7 +591,6 @@ from datetime import datetime
 class BookingCreateSerializer(serializers.ModelSerializer):
     scheduled_time = serializers.CharField()
     services = serializers.PrimaryKeyRelatedField(many=True, queryset=Service.objects.all(), required=False)
-    address_id = serializers.IntegerField(required=False)
 
     class Meta:
         model = Booking
@@ -602,7 +601,6 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             "problem_title",
             "problem_description",
             "services",
-            "address_id",
         ]
 
         
@@ -618,7 +616,6 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context["request"]
         serviceman = attrs.get("serviceman")
-        address_id = attrs.get("address_id")
 
         try:
             customer_profile = request.user.customerprofile
@@ -687,7 +684,6 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         services_data = validated_data.pop("services", [])
         
         # Extract the address fields stashed during validation
-        address_id = validated_data.pop("address_id", None)
         booking_address = validated_data.pop("__booking_address", None)
         booking_lat = validated_data.pop("__booking_lat", None)
         booking_long = validated_data.pop("__booking_long", None)
