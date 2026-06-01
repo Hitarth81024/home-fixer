@@ -83,23 +83,6 @@ class CustomerProfile(models.Model):
         null=True,
         blank=True
     )
-
-class CustomerAddress(models.Model):
-    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="addresses")
-    title = models.CharField(max_length=50, help_text="e.g. Home, Office, Other")
-    address = models.TextField()
-    latitude = models.DecimalField(max_digits=10, decimal_places=8)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8)
-    is_default = models.BooleanField(default=False)
-
-    def save(self, *args, **kwargs):
-        if self.is_default:
-            CustomerAddress.objects.filter(customer=self.customer).update(is_default=False)
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.title} - {self.customer.user.email}"
-
 #---------serviceman profile changes start here------------------#
 
 class ServicemanProfile(models.Model):

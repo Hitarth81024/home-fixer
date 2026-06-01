@@ -7045,25 +7045,68 @@ class ServicemanVendorOrderAPI(ListAPIView):
         ).order_by("-created_at")
 
 
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
-from .models import CustomerAddress
+from rest_framework.views import APIView
 from .serializers import CustomerAddressSerializer
 
-class CustomerAddressListCreateAPI(ListCreateAPIView):
+class CustomerAddressListCreateAPI(APIView):
     permission_classes = [IsAuthenticated, IsCustomer]
-    serializer_class = CustomerAddressSerializer
 
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False) or not self.request.user.is_authenticated:
-            return CustomerAddress.objects.none()
-        return CustomerAddress.objects.filter(customer=self.request.user.customerprofile).order_by("-id")
+    def get(self, request):
+        profile = request.user.customerprofile
+        if not profile.default_address:
+            return Response([])
+        data = {
+            "id": request.user.id,
+            "title": "Default",
+            "address": profile.default_address,
+            "latitude": profile.default_lat,
+            "longitude": profile.default_long,
+            "is_default": True
+        }
+        serializer = CustomerAddressSerializer(data)
+        return Response([serializer.data])
 
-class CustomerAddressDetailAPI(RetrieveUpdateDestroyAPIView):
+    def post(self, request):
+        serializer = CustomerAddressSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        res_data = serializer.save()
+        return Response(res_data, status=status.HTTP_201_CREATED)
+
+class CustomerAddressDetailAPI(APIView):
     permission_classes = [IsAuthenticated, IsCustomer]
-    serializer_class = CustomerAddressSerializer
 
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False) or not self.request.user.is_authenticated:
-            return CustomerAddress.objects.none()
-        return CustomerAddress.objects.filter(customer=self.request.user.customerprofile)
+    def get(self, request, pk):
+        profile = request.user.customerprofile
+        if not profile.default_address:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        data = {
+            "id": request.user.id,
+            "title": "Default",
+            "address": profile.default_address,
+            "latitude": profile.default_lat,
+            "longitude": profile.default_long,
+            "is_default": True
+        }
+        serializer = CustomerAddressSerializer(data)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        serializer = CustomerAddressSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        res_data = serializer.save()
+        return Response(res_data)
+
+    def patch(self, request, pk):
+        serializer = CustomerAddressSerializer(data=request.data, context={"request": request}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        res_data = serializer.save()
+        return Response(res_data)
+
+    def delete(self, request, pk):
+        profile = request.user.customerprofile
+        profile.default_address = None
+        profile.default_lat = None
+        profile.default_long = None
+        profile.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 

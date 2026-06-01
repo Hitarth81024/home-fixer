@@ -124,17 +124,45 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 #===========Customer, Serviceman, Vendor Profile Serializers ==========#
 
-from .models import CustomerAddress
+class CustomerAddressSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(default="Default", required=False)
+    address = serializers.CharField()
+    latitude = serializers.DecimalField(max_digits=10, decimal_places=8)
+    longitude = serializers.DecimalField(max_digits=11, decimal_places=8)
+    is_default = serializers.BooleanField(default=True, required=False)
 
-class CustomerAddressSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomerAddress
-        fields = ["id", "title", "address", "latitude", "longitude", "is_default"]
-        
     def create(self, validated_data):
-        user = self.context['request'].user
-        validated_data['customer'] = user.customerprofile
-        return super().create(validated_data)
+        request = self.context.get("request")
+        profile = request.user.customerprofile
+        profile.default_address = validated_data.get("address")
+        profile.default_lat = validated_data.get("latitude")
+        profile.default_long = validated_data.get("longitude")
+        profile.save()
+        return {
+            "id": request.user.id,
+            "title": "Default",
+            "address": profile.default_address,
+            "latitude": profile.default_lat,
+            "longitude": profile.default_long,
+            "is_default": True
+        }
+
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        profile = request.user.customerprofile
+        profile.default_address = validated_data.get("address", profile.default_address)
+        profile.default_lat = validated_data.get("latitude", profile.default_lat)
+        profile.default_long = validated_data.get("longitude", profile.default_long)
+        profile.save()
+        return {
+            "id": request.user.id,
+            "title": "Default",
+            "address": profile.default_address,
+            "latitude": profile.default_lat,
+            "longitude": profile.default_long,
+            "is_default": True
+        }
 
 class CustomerProfileSerializer(serializers.ModelSerializer):
     profile_image = serializers.ImageField(required=False, write_only=True)
@@ -598,23 +626,9 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Customer profile not found")
 
         # Determine which address to use
-        address_text = None
-        lat = None
-        lon = None
-        
-        if address_id:
-            from .models import CustomerAddress
-            try:
-                addr = CustomerAddress.objects.get(id=address_id, customer=customer_profile)
-                address_text = addr.address
-                lat = addr.latitude
-                lon = addr.longitude
-            except CustomerAddress.DoesNotExist:
-                raise serializers.ValidationError("Selected address not found or does not belong to you.")
-        else:
-            address_text = customer_profile.default_address
-            lat = customer_profile.default_lat
-            lon = customer_profile.default_long
+        address_text = customer_profile.default_address
+        lat = customer_profile.default_lat
+        lon = customer_profile.default_long
 
         # Location checks
         if not lat or not lon:
