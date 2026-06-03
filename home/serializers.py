@@ -111,7 +111,7 @@ class GoogleAuthSerializer(serializers.Serializer):
 
 class GoogleLoginSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
-    role = serializers.ChoiceField(choices=[('customer', 'Customer'), ('service-man', 'Serviceman')], required=True)
+    role = serializers.ChoiceField(choices=[('customer', 'Customer'), ('service-man', 'Serviceman')], required=False, default='customer')
 
     def validate(self, data):
         from google.oauth2 import id_token

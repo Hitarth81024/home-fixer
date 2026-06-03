@@ -296,6 +296,9 @@ class RegisterCompleteAPI(APIView):
             "tokens": get_tokens(user)
         })
 
+import logging
+logger = logging.getLogger(__name__)
+
 class GoogleLoginAPI(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -307,8 +310,15 @@ class GoogleLoginAPI(APIView):
         tags=["Auth"]
     )
     def post(self, request):
+        logger.info(f"GoogleLoginAPI: Post request received to {request.path}")
+        logger.info(f"GoogleLoginAPI payload data: {request.data}")
+        
         serializer = GoogleLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            logger.error(f"GoogleLoginAPI: Validation failed. Errors: {serializer.errors}")
+            raise e
 
         email = serializer.validated_data["email"]
         name = serializer.validated_data["name"]
@@ -374,6 +384,8 @@ class GoogleLoginAPI(APIView):
             'ADMIN': 'admin',
         }
         output_role = output_role_map.get(user.role, user.role)
+
+        logger.info(f"GoogleLoginAPI: Successful authentication. User: {user.email} (ID: {user.id}), Assigned Role: {output_role}")
 
         return Response({
             "success": True,
