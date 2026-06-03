@@ -21,3 +21,4 @@ redis
 flower
 resend
 django-anymail
+google-auth

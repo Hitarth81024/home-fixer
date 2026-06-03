@@ -108,18 +108,70 @@ class GoogleAuthSerializer(serializers.Serializer):
 
         return data
 
+
+class GoogleLoginSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
+    role = serializers.ChoiceField(choices=[('customer', 'Customer'), ('service-man', 'Serviceman')], required=True)
+
+    def validate(self, data):
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+        from django.conf import settings
+
+        token = data.get("token")
+        client_id = getattr(settings, "GOOGLE_CLIENT_ID", None)
+
+        if not client_id:
+            raise serializers.ValidationError("GOOGLE_CLIENT_ID is not configured on settings.")
+
+        try:
+            # Verify the ID token (checks aud, exp, iss)
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
+
+            # Validate issuer (iss)
+            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise serializers.ValidationError('Invalid token issuer.')
+
+            data["email"] = idinfo.get('email')
+            if not data["email"]:
+                raise serializers.ValidationError("Email not provided in Google token.")
+
+            data["name"] = idinfo.get('name', '')
+            data["picture"] = idinfo.get('picture', '')
+            data["google_id"] = idinfo.get('sub')
+
+        except Exception as e:
+            raise serializers.ValidationError(f"Invalid Google ID token: {str(e)}")
+
+        return data
+
+
 #===========User Profile Serializer ==========#
 class UserProfileSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
             'id',
             'name',
+            'full_name',
             'email',
             'phone',
             'role',
+            'google_id',
+            'profile_picture',
             'is_verified',
         ]
+
+    def get_role(self, obj):
+        role_map = {
+            'CUSTOMER': 'customer',
+            'SERVICEMAN': 'service-man',
+            'VENDOR': 'vendor',
+            'ADMIN': 'admin',
+        }
+        return role_map.get(obj.role, obj.role)
 
 
 #===========Customer, Serviceman, Vendor Profile Serializers ==========#

@@ -6,7 +6,7 @@ from cloudinary.models import CloudinaryField
 from django.contrib.auth import get_user_model
 #=============user model manager==================
 class UserManager(BaseUserManager):
-    def create_user(self, email, phone, password=None, role='CUSTOMER'):
+    def create_user(self, email, phone=None, password=None, role='CUSTOMER'):
         if not email:
             raise ValueError("Email is required")
 
@@ -49,11 +49,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('ADMIN', 'Admin'),
     ]
 
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, blank=True)
+    full_name = models.CharField(max_length=255, blank=True)
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, unique=True)
+    phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     is_verified = models.BooleanField(default=False)
+    google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    profile_picture = models.URLField(max_length=1000, null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

@@ -73,6 +73,8 @@ urlpatterns = [
 
     # ================= AUTH =================
     path("login/", EmailPasswordLoginAPI.as_view(), name="login"),
+    path("google-login/", GoogleLoginAPI.as_view(), name="google-login-direct"),
+    path("logout/", LogoutAPI.as_view(), name="logout-direct"),
     path("auth/google-login/", GoogleLoginAPI.as_view(), name="google-login"),
     path("auth/logout/", LogoutAPI.as_view(), name="logout"),
 

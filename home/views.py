@@ -1,5 +1,5 @@
 from home.models import Transaction
-from home.serializers import GoogleAuthSerializer
+from home.serializers import GoogleAuthSerializer, GoogleLoginSerializer
 import profile
 from django.conf import settings
 from django.utils import timezone
@@ -95,6 +95,20 @@ class LogoutAPI(APIView):
 
     @swagger_auto_schema(request_body=LogoutSerializer)
     def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            refresh_token = serializer.validated_data.get("refresh")
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+        except Exception as e:
+            return Response(
+                {"success": False, "detail": f"Failed to blacklist token: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         response = Response(
             {"success": True, "message": "Logged out successfully"}
         )
@@ -288,62 +302,56 @@ class GoogleLoginAPI(APIView):
 
     @swagger_auto_schema(
         operation_summary="Login/Register with Google",
-        operation_description="Authenticate with Google ID Token. If user doesn't exist, 'phone' and 'role' are required for registration.",
-        request_body=GoogleAuthSerializer,
+        operation_description="Authenticate with Google credential token and role. Returns SimpleJWT access/refresh tokens and user details.",
+        request_body=GoogleLoginSerializer,
         tags=["Auth"]
     )
     def post(self, request):
-        serializer = GoogleAuthSerializer(data=request.data)
+        serializer = GoogleLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data["email"]
         name = serializer.validated_data["name"]
-        
+        google_id = serializer.validated_data["google_id"]
+        profile_picture = serializer.validated_data["picture"]
+        incoming_role = serializer.validated_data["role"]  # 'customer' or 'service-man'
+
+        # Map role to database choices
+        role_map = {
+            'customer': 'CUSTOMER',
+            'service-man': 'SERVICEMAN',
+        }
+        db_role = role_map.get(incoming_role, 'CUSTOMER')
+
         user = User.objects.filter(email=email).first()
 
         if user:
-            # Existing user: Login
-            return Response({
-                "success": True,
-                "message": "Login successful",
-                "is_new_user": False,
-                "role": user.role,
-                "tokens": get_tokens(user),
-                "user": {
-                    "id": str(user.id),
-                    "email": user.email,
-                    "name": user.name,
-                    "phone": user.phone,
-                }
-            }, status=200)
+            # Update user's Google info if missing/changed
+            updated = False
+            if not user.google_id:
+                user.google_id = google_id
+                updated = True
+            if profile_picture and user.profile_picture != profile_picture:
+                user.profile_picture = profile_picture
+                updated = True
+            if name and not user.full_name:
+                user.full_name = name
+                updated = True
+            if name and not user.name:
+                user.name = name
+                updated = True
+            if updated:
+                user.save()
         else:
-            # New user: Register
-            phone = serializer.validated_data.get("phone")
-            role = serializer.validated_data.get("role")
-
-            if not phone or not role:
-                return Response({
-                    "success": False,
-                    "message": "User not found. Please provide 'phone' and 'role' to register.",
-                    "is_new_user": True,
-                    "email": email,
-                    "name": name
-                }, status=400)
-
-            # Check if phone exists for another user
-            if User.objects.filter(phone=phone).exists():
-                return Response({
-                    "success": False,
-                    "message": "Phone number already exists with another account."
-                }, status=400)
-
             # Create new user
             user = User.objects.create_user(
                 email=email,
-                phone=phone,
-                role=role
+                role=db_role
             )
             user.name = name
+            user.full_name = name
+            user.google_id = google_id
+            user.profile_picture = profile_picture
             user.is_verified = True
             user.save()
 
@@ -355,19 +363,30 @@ class GoogleLoginAPI(APIView):
             elif user.role == "VENDOR":
                 VendorProfile.objects.get_or_create(user=user)
 
-            return Response({
-                "success": True,
-                "message": "User registered and logged in successfully",
-                "is_new_user": True,
-                "role": user.role,
-                "tokens": get_tokens(user),
-                "user": {
-                    "id": str(user.id),
-                    "email": user.email,
-                    "name": user.name,
-                    "phone": user.phone,
-                }
-            }, status=201)
+        # Generate tokens using SimpleJWT
+        tokens = get_tokens(user)
+
+        # Map database role to output representation
+        output_role_map = {
+            'CUSTOMER': 'customer',
+            'SERVICEMAN': 'service-man',
+            'VENDOR': 'vendor',
+            'ADMIN': 'admin',
+        }
+        output_role = output_role_map.get(user.role, user.role)
+
+        return Response({
+            "success": True,
+            "access": tokens["access"],
+            "refresh": tokens["refresh"],
+            "user": {
+                "id": user.id,
+                "name": user.full_name or user.name or "",
+                "email": user.email,
+                "role": output_role,
+                "profile_picture": user.profile_picture or ""
+            }
+        }, status=status.HTTP_200_OK)
 
 #=============User Profile API =============#
 class UserProfileAPI(APIView):
