@@ -6569,6 +6569,13 @@ Serviceman confirms the service is finished.
         if booking.status == "CANCELLED":
             return Response({"error": "Booking is cancelled and cannot be completed"}, status=400)
 
+        if booking.service_type == "VISITING":
+            if booking.payment_status not in ["PARTIAL", "PAID"]:
+                return Response({"error": "Cannot complete booking. Visiting payment is not completed yet."}, status=400)
+        elif booking.service_type == "VISITING_SERVICE":
+            if booking.payment_status != "PAID":
+                return Response({"error": "Cannot complete booking. Final payment is not completed yet."}, status=400)
+
         # Call the centralized completion logic
         booking.mark_as_completed()
 
@@ -6796,9 +6803,7 @@ amount must be paid via the selected payment gateway.
                         pass
 
                 elif payment_type == "FINAL":
-                    booking.payment_status = "PAID"
-                    booking.status = "COMPLETED"
-                    booking.save(update_fields=["payment_status", "status"])
+                    booking.mark_as_completed()
 
                 return Response({
                     "status": "FULLY_PAID_BY_WALLET",
