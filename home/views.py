@@ -6463,7 +6463,8 @@ class VendorAcceptOrderAPI(APIView):
 
         return Response({
             "message": "Order accepted",
-            "status": order.status
+            "status": order.status,
+            "tracking_code": order.tracking_code
         })
 
 
@@ -6491,7 +6492,10 @@ class VendorDeliverOrderAPI(APIView):
         order.status = "DELIVERED"
         order.save()
 
-        return Response({"message": "Delivered"})
+        return Response({
+            "message": "Delivered",
+            "tracking_code": order.tracking_code
+        })
 
 
 # =========================================================

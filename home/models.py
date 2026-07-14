@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 from django.db.models import F, Sum
+from decimal import Decimal
 from cloudinary.models import CloudinaryField
 from django.contrib.auth import get_user_model
 #=============user model manager==================
@@ -107,7 +108,7 @@ class ServicemanProfile(models.Model):
     visiting_charge = models.DecimalField(
     max_digits=10,
     decimal_places=2,
-    default=0
+    default=Decimal("0")
 )
 
     # ✅ NEW: Skills (stored as JSON list)
@@ -243,7 +244,7 @@ class Category(models.Model):
         related_name='children',
         help_text="Select a parent category if this is a subcategory."
     )
-    visiting_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0, null=True, blank=True)
+    visiting_charge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"), null=True, blank=True)
     is_trending = models.BooleanField(default=False)
     trending_order = models.PositiveIntegerField(default=0)
 
@@ -375,11 +376,11 @@ class Booking(models.Model):
         db_index=True
     )
 
-    visiting_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=20.00)
+    visiting_charge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("20.00"))
 
-    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
 
     status = models.CharField(
         max_length=20,
@@ -630,7 +631,7 @@ class MaterialOrder(models.Model):
     total_cost = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=0
+        default=Decimal("0")
     )
     assigned_vendor = models.ForeignKey(
         VendorProfile,
@@ -689,7 +690,7 @@ class MaterialOrderItem(models.Model):
     price_at_order = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=0
+        default=Decimal("0")
     )
 
     def save(self, *args, **kwargs):
@@ -718,7 +719,7 @@ class MaterialOrderItem(models.Model):
 
 class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal("0"))
     updated_at = models.DateTimeField(auto_now=True)
 
 
@@ -810,7 +811,7 @@ class Payment(models.Model):
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=0
+        default=Decimal("0")
     )
 
     payment_type = models.CharField(
@@ -953,7 +954,7 @@ class SystemSetting(models.Model):
         return f"{self.key}: {self.value}"
 
 class PlatformSettings(models.Model):
-    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=20.00)
+    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("20.00"))
 
     class Meta:
         verbose_name_plural = 'Platform Settings'

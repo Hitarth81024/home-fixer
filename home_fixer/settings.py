@@ -68,7 +68,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 
 
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 #DEBUG=False
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -185,12 +185,14 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set. Please set it to your Neon DB connection string in your .env file.")
 
-DATABASES = {
+DATABASES =  {
     "default": dj_database_url.parse(
         DATABASE_URL,
         conn_max_age=0,
     )
-}
+        
+    }
+
 
 # Neon DB strictly requires SSL connections
 if 'postgres' in DATABASES['default'].get('ENGINE', ''):
