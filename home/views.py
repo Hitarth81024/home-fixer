@@ -4503,8 +4503,12 @@ class BookingDetailAPIView(APIView):
 
         try:
             booking = Booking.objects.select_related(
-                "serviceman",
-                "customer"
+                "serviceman__user",
+                "customer__user"
+            ).prefetch_related(
+                "items",
+                "services",
+                "payments"
             ).get(id=booking_id)
 
         except Booking.DoesNotExist:

@@ -70,6 +70,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['phone']
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['role']),
+            models.Index(fields=['email']),
+        ]
+
     def __str__(self):
         return self.email
 
@@ -405,6 +411,7 @@ class Booking(models.Model):
             models.Index(fields=['serviceman', '-created_at']),
             models.Index(fields=['status', '-created_at']),
             models.Index(fields=['payment_status']),
+            models.Index(fields=['status', 'payment_status']),
         ]
 
     # 🔥 SERVICE TYPE UPDATE
@@ -642,6 +649,13 @@ class MaterialOrder(models.Model):
 )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['vendor', 'status']),
+            models.Index(fields=['booking', 'status']),
+            models.Index(fields=['status', '-created_at']),
+        ]
 
     def check_auto_reject(self):
         from django.utils import timezone
