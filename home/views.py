@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .models import Booking, BookingItem, OrderItem, Payment, User, CustomerProfile, ServicemanProfile, VendorProfile, EmailOTP,Category,Service,Product
+from .models import Booking, BookingItem, OrderItem, Payment, User, CustomerProfile, ServicemanProfile, VendorProfile, EmailOTP,Category,Service,Product,FCMDevice
 from .serializers import (
     BookingCreateSerializer,
     PaymentCanCreateSerializer,
@@ -2238,7 +2238,7 @@ class BookingSummaryAPI(APIView):
 
         return Response({
             "booking_id": booking.id,
-            "service_charge": booking.service_charge,
+            "visiting_charge": booking.service_charge,
             "product_total": product_total,
             "total_amount": total,
 
@@ -2412,6 +2412,17 @@ STATUS:
             order.save()
 
             orders.append(order.id)
+
+            # 🔥 SEND PUSH NOTIFICATION TO VENDOR
+            from .fcm import send_push_notification
+            vendor_device = FCMDevice.objects.filter(user=vendor.user).first()
+            if vendor_device:
+                send_push_notification(
+                    token=vendor_device.token,
+                    title="New Order Received!",
+                    body=f"You have a new order #{order.id}",
+                    data={"order_id": str(order.id), "type": "new_order"}
+                )
 
         booking.update_total_cost()
 
@@ -4459,6 +4470,17 @@ Flow:
         booking.image_urls = (booking.image_urls or []) + image_urls
         booking.save()
 
+        # 🔥 SEND PUSH NOTIFICATION TO SERVICEMAN
+        from .fcm import send_push_notification
+        serviceman_device = FCMDevice.objects.filter(user=booking.serviceman.user).first()
+        if serviceman_device:
+            send_push_notification(
+                token=serviceman_device.token,
+                title="New Booking Assigned!",
+                body=f"You have a new booking #{booking.id} from {request.user.email}",
+                data={"booking_id": str(booking.id), "type": "new_booking"}
+            )
+
         return Response({
             "message": "Booking created. Please complete payment",
             "booking_id": booking.id,
@@ -4571,6 +4593,17 @@ class ServicemanBookingActionAPI(APIView):
 
                 serviceman.is_available = False
                 serviceman.save(update_fields=["is_available"])
+
+                # 🔥 SEND PUSH NOTIFICATION TO CUSTOMER
+                from .fcm import send_push_notification
+                customer_device = FCMDevice.objects.filter(user=booking.customer.user).first()
+                if customer_device:
+                    send_push_notification(
+                        token=customer_device.token,
+                        title="Booking Confirmed!",
+                        body=f"Your booking #{booking.id} has been accepted by {serviceman.user.email}",
+                        data={"booking_id": str(booking.id), "type": "booking_confirmed"}
+                    )
 
                 # CREDIT serviceman wallet with visiting charge on accept
                 visiting_amount = booking.visiting_charge
@@ -5733,6 +5766,17 @@ STATUS:
 
             orders.append(order.id)
 
+            # 🔥 SEND PUSH NOTIFICATION TO VENDOR
+            from .fcm import send_push_notification
+            vendor_device = FCMDevice.objects.filter(user=vendor.user).first()
+            if vendor_device:
+                send_push_notification(
+                    token=vendor_device.token,
+                    title="New Order Received!",
+                    body=f"You have a new order #{order.id}",
+                    data={"order_id": str(order.id), "type": "new_order"}
+                )
+
         booking.update_total_cost()
 
         return Response({
@@ -6424,6 +6468,17 @@ class ApproveBookingItemsAPI(APIView):
             order.save()
 
             orders.append(order.id)
+
+            # 🔥 SEND PUSH NOTIFICATION TO VENDOR
+            from .fcm import send_push_notification
+            vendor_device = FCMDevice.objects.filter(user=vendor.user).first()
+            if vendor_device:
+                send_push_notification(
+                    token=vendor_device.token,
+                    title="New Order Received!",
+                    body=f"You have a new order #{order.id}",
+                    data={"order_id": str(order.id), "type": "new_order"}
+                )
 
         return Response({
             "message": "Approved & sent to vendor",
@@ -7133,4 +7188,17 @@ class CustomerAddressDetailAPI(APIView):
         profile.default_long = None
         profile.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class RegisterFCMDeviceAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            return Response({"error": "Token required"}, status=400)
+        
+        device, created = FCMDevice.objects.get_or_create(
+            user=request.user, token=token
+        )
+        return Response({"message": "Device registered"}, status=201)
 

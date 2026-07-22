@@ -55,6 +55,7 @@ from .views import (
     VendorProfileAPI,
     ServicemanVendorOrderAPI,
     VendorProductListAPI,
+    RegisterFCMDeviceAPI,
 )
 
 from .admin_views import (
@@ -200,4 +201,5 @@ urlpatterns = [
     path("admin/withdrawals/<int:pk>/", views.AdminWithdrawalActionAPI.as_view(), name="admin-withdrawal-action"),
     path("admin/servicemen/bookings/", AdminServicemanBookingAPI.as_view(), name="admin-serviceman-bookings"),
     path("serviceman/vendor-orders/", ServicemanVendorOrderAPI.as_view(), name="serviceman-vendor-orders"),
+    path("register-device/", RegisterFCMDeviceAPI.as_view(), name="register-device"),
 ]

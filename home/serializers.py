@@ -786,7 +786,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     )
 
     customer_image = serializers.SerializerMethodField()
-    service_charge = serializers.SerializerMethodField()
+    visiting_charge = serializers.SerializerMethodField()
     platform_fee = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
 
@@ -808,7 +808,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             "serviceman_name",
             "serviceman_skills",
             "customer_address",
-            "service_charge",
+            "visiting_charge",
             "platform_fee",
             "total_amount",
             "created_at",
@@ -821,7 +821,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         return []
 
     # ✅ FIXED
-    def get_service_charge(self, obj):
+    def get_visiting_charge(self, obj):
         return obj.visiting_charge + obj.service_charge
     
     def get_platform_fee(self, obj):

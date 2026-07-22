@@ -14,6 +14,13 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 import dj_database_url
+import firebase_admin
+from firebase_admin import credentials
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+cred = credentials.Certificate(BASE_DIR / "home-fixer-firebase-adminsdk.json")
+firebase_admin.initialize_app(cred)
 
 load_dotenv()
 
@@ -102,14 +109,24 @@ INSTALLED_APPS = [
 ]
 ASGI_APPLICATION = "homefixerapi.asgi.application"
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
-    'API_KEY': os.getenv("CLOUDINARY_API_KEY"),
-    'API_SECRET': os.getenv("CLOUDINARY_API_SECRET"),
+# Cloudflare R2 Storage
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "endpoint_url": f"https://{os.getenv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com",
+            "access_key": os.getenv("R2_ACCESS_KEY_ID"),
+            "secret_key": os.getenv("R2_SECRET_ACCESS_KEY"),
+            "bucket_name": os.getenv("R2_BUCKET_NAME"),
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            "custom_domain": os.getenv("R2_PUBLIC_URL"),
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
 }
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
 
 
 AUTH_USER_MODEL = 'home.User'
@@ -242,7 +259,6 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
 
