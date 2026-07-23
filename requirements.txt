@@ -9,8 +9,8 @@ django-cors-headers
 dj-database-url
 whitenoise
 pillow
-cloudinary
-django-cloudinary-storage
+django-storages[boto3]
+firebase-admin
 python-multipart
 channels
 channels-redis

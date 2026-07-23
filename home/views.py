@@ -4801,7 +4801,9 @@ class ProductListAPI(APIView):
         operation_summary="Get All Available Products",
         operation_description="Returns all products with stock_quantity > 0. If booking_id is provided, products from auto-rejected vendors for that booking are excluded.",
         manual_parameters=[
-            openapi.Parameter("booking_id", openapi.IN_QUERY, type=openapi.TYPE_INTEGER, required=False, description="Exclude auto-rejected vendors from this specific booking ID")
+            openapi.Parameter("booking_id", openapi.IN_QUERY, type=openapi.TYPE_INTEGER, required=False, description="Exclude auto-rejected vendors from this specific booking ID"),
+            openapi.Parameter("page", openapi.IN_QUERY, type=openapi.TYPE_INTEGER, required=False, description="Page number (default: 1)"),
+            openapi.Parameter("page_size", openapi.IN_QUERY, type=openapi.TYPE_INTEGER, required=False, description="Items per page (default: 20, max: 100)")
         ],
         responses={200: ProductSerializer(many=True)},
         tags=["Products"]
@@ -4823,9 +4825,30 @@ class ProductListAPI(APIView):
             except Exception:
                 pass
 
-        serializer = ProductSerializer(products, many=True)
+        page = request.query_params.get("page", 1)
+        page_size = request.query_params.get("page_size", 20)
 
-        return Response(serializer.data)
+        try:
+            page = int(page)
+            page_size = int(page_size)
+        except (TypeError, ValueError):
+            page = 1
+            page_size = 20
+
+        page_size = min(page_size, 100)
+        total = products.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        serializer = ProductSerializer(products[start:end], many=True)
+
+        return Response({
+            "count": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size,
+            "results": serializer.data
+        })
 
 
 class ProductUpdateAPI(APIView):
