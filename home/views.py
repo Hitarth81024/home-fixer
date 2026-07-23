@@ -3975,7 +3975,6 @@ class CategoryNearbyServicemanAPI(APIView):
         queryset = ServicemanProfile.objects.select_related("user").filter(
             is_active=True,
             is_approved=True,
-            skills__contains=[category],   # 🔥 CATEGORY = SKILL
             current_lat__isnull=False,
             current_long__isnull=False
         )
@@ -3983,6 +3982,8 @@ class CategoryNearbyServicemanAPI(APIView):
         nearby = []
 
         for profile in queryset:
+            if profile.skills and category not in profile.skills:
+                continue
             distance = distance_km(
                 lat,
                 lon,
