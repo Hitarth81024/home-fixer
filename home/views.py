@@ -3175,6 +3175,16 @@ class VerifyRazorpayPaymentAPIView(APIView):
             payment.gateway_payment_id = razorpay_payment_id
             payment.save()
 
+            from .fcm import notify_user
+            booking = payment.booking
+            if booking and booking.serviceman and booking.serviceman.user:
+                notify_user(
+                    booking.serviceman.user,
+                    "Payment Received",
+                    f"Razorpay payment of Rs.{payment.amount} received for booking #{booking.id}. You can proceed.",
+                    {"booking_id": str(booking.id), "type": "payment_received", "amount": str(payment.amount)}
+                )
+
             return Response({"message": "Payment verified successfully"})
 
         except razorpay.errors.SignatureVerificationError:
@@ -6998,6 +7008,15 @@ amount must be paid via the selected payment gateway.
 
                 elif payment_type == "FINAL":
                     booking.mark_as_completed()
+
+                from .fcm import notify_user
+                if booking.serviceman and booking.serviceman.user:
+                    notify_user(
+                        booking.serviceman.user,
+                        "Payment Received",
+                        f"Wallet payment of Rs.{amount_due} received for booking #{booking.id}. You can proceed.",
+                        {"booking_id": str(booking.id), "type": "payment_received", "amount": str(amount_due)}
+                    )
 
                 return Response({
                     "status": "FULLY_PAID_BY_WALLET",
