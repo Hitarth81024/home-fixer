@@ -2877,6 +2877,17 @@ class VerifyPaymentAPIView(APIView):
         payment.method = "CARD"
         payment.save()
 
+        if payment.status == "PAID":
+            from .fcm import notify_user
+            booking = payment.booking
+            if booking.serviceman and booking.serviceman.user:
+                notify_user(
+                    booking.serviceman.user,
+                    "Payment Received",
+                    f"Visiting payment received for booking #{booking.id}. You can proceed.",
+                    {"booking_id": str(booking.id), "type": "payment_received"}
+                )
+
         return Response({"message": "Payment verified"})
 
 
@@ -4134,6 +4145,15 @@ Only ADMIN role allowed.
 
         profile.save()
 
+        from .fcm import notify_user
+        status_text = "approved" if profile.is_approved and profile.is_active else "deactivated"
+        notify_user(
+            profile.user,
+            "Account Status Updated",
+            f"Your account has been {status_text} by admin",
+            {"type": "account_status", "status": status_text}
+        )
+
         return Response({
             "id": profile.pk,
             "is_approved": profile.is_approved,
@@ -4216,6 +4236,15 @@ Only ADMIN role allowed.
                 setattr(profile, field, request.data[field])
 
         profile.save()
+
+        from .fcm import notify_user
+        status_text = "approved" if profile.is_approved and profile.is_active else "deactivated"
+        notify_user(
+            profile.user,
+            "Vendor Account Updated",
+            f"Your vendor account has been {status_text} by admin",
+            {"type": "vendor_status", "status": status_text}
+        )
 
         return Response({
             "id": profile.pk,
@@ -4654,6 +4683,14 @@ class ServicemanBookingActionAPI(APIView):
                         )
                     )
 
+                from .fcm import notify_user
+                notify_user(
+                    booking.customer,
+                    "Booking Rejected",
+                    f"Your booking #{booking.id} was rejected by the serviceman. You have been refunded.",
+                    {"booking_id": str(booking.id), "type": "booking_rejected"}
+                )
+
         else:
             return Response({"error": "Invalid action"}, status=400)
 
@@ -4740,6 +4777,15 @@ class CustomerCancelBookingAPI(APIView):
                         f"Booking #{booking.id} cancelled by customer"
                     )
                 )
+
+        from .fcm import notify_user
+        if booking.serviceman and booking.serviceman.user:
+            notify_user(
+                booking.serviceman.user,
+                "Booking Cancelled",
+                f"Booking #{booking.id} has been cancelled by the customer",
+                {"booking_id": str(booking.id), "type": "booking_cancelled"}
+            )
 
         return Response({
             "message": "Booking cancelled successfully",
@@ -5293,6 +5339,14 @@ class BookingTrackingAPI(APIView):
         if dist_km < 0.1 and booking.status == "ACCEPTED":
             booking.status = "ONGOING"
             booking.save()
+
+            from .fcm import notify_user
+            notify_user(
+                booking.customer,
+                "Serviceman Arrived!",
+                f"Your serviceman has arrived at your location for booking #{booking.id}",
+                {"booking_id": str(booking.id), "type": "serviceman_arrived"}
+            )
 
         eta_minutes = round((dist_km / 30) * 60)
         if eta_minutes < 1:
@@ -6304,6 +6358,15 @@ class MarkVendorCollectedAPI(APIView):
         order.status = "COLLECTED"
         order.save()
 
+        from .fcm import notify_user
+        if order.vendor and order.vendor.user:
+            notify_user(
+                order.vendor.user,
+                "Order Collected",
+                f"Order #{order.id} has been collected by the serviceman",
+                {"order_id": str(order.id), "type": "order_collected"}
+            )
+
         # CREDIT vendor wallet with order total when serviceman collects
         from .models import Wallet, Transaction as WalletTransaction
         from django.db import transaction as db_transaction
@@ -6406,6 +6469,14 @@ class AddProductAndServiceAPI(APIView):
         booking.service_type = "Visiting+Service"
         booking.service_charge = service_charge
         booking.save()
+
+        from .fcm import notify_user
+        notify_user(
+            booking.customer,
+            "Products Added for Approval",
+            f"Your serviceman has added products to booking #{booking.id}. Please review and approve.",
+            {"booking_id": str(booking.id), "type": "products_added"}
+        )
 
         return Response({
             "message": "Product added",
@@ -6536,6 +6607,16 @@ class VendorAcceptOrderAPI(APIView):
         if timezone.now() - order.created_at > timedelta(minutes=2):
             order.status = "AUTO_REJECTED"
             order.save()
+
+            from .fcm import notify_user
+            if order.booking and order.booking.serviceman and order.booking.serviceman.user:
+                notify_user(
+                    order.booking.serviceman.user,
+                    "Order Auto-Rejected",
+                    f"Order #{order.id} was auto-rejected due to no response from vendor",
+                    {"order_id": str(order.id), "type": "order_auto_rejected"}
+                )
+
             return Response({"error": "Auto rejected (time expired)"}, status=400)
 
         if order.status != "REQUESTED":
@@ -6543,6 +6624,15 @@ class VendorAcceptOrderAPI(APIView):
 
         order.status = "VENDOR_ACCEPTED"
         order.save()
+
+        from .fcm import notify_user
+        if order.booking and order.booking.serviceman and order.booking.serviceman.user:
+            notify_user(
+                order.booking.serviceman.user,
+                "Order Accepted",
+                f"Order #{order.id} from {order.vendor.business_name if order.vendor else 'vendor'} is ready for pickup",
+                {"order_id": str(order.id), "type": "order_accepted"}
+            )
 
         return Response({
             "message": "Order accepted",
@@ -6574,6 +6664,15 @@ class VendorDeliverOrderAPI(APIView):
 
         order.status = "DELIVERED"
         order.save()
+
+        from .fcm import notify_user
+        if order.booking and order.booking.serviceman and order.booking.serviceman.user:
+            notify_user(
+                order.booking.serviceman.user,
+                "Order Delivered",
+                f"Order #{order.id} has been delivered by the vendor",
+                {"order_id": str(order.id), "type": "order_delivered"}
+            )
 
         return Response({
             "message": "Delivered",
@@ -6665,6 +6764,14 @@ Serviceman confirms the service is finished.
 
         # Call the centralized completion logic
         booking.mark_as_completed()
+
+        from .fcm import notify_user
+        notify_user(
+            booking.customer,
+            "Service Completed!",
+            f"Your booking #{booking.id} has been completed. Please make the final payment.",
+            {"booking_id": str(booking.id), "type": "booking_completed"}
+        )
 
         return Response({
             "message": "Booking completed successfully",
@@ -7105,6 +7212,14 @@ class AdminWithdrawalActionAPI(APIView):
                 txn.description = f"Withdrawal Approved. Txn ID: {transaction_id} ({admin_payment_method})"
                 txn.save()
 
+            from .fcm import notify_user
+            notify_user(
+                withdrawal.user,
+                "Withdrawal Approved",
+                f"Your withdrawal request of Rs.{withdrawal.amount} has been approved",
+                {"withdrawal_id": str(withdrawal.id), "type": "withdrawal_approved"}
+            )
+
             return Response({
                 "message": "Withdrawal approved successfully", 
                 "transaction_id": transaction_id
@@ -7125,6 +7240,14 @@ class AdminWithdrawalActionAPI(APIView):
 
             withdrawal.status = 'REJECTED'
             withdrawal.save()
+
+            from .fcm import notify_user
+            notify_user(
+                withdrawal.user,
+                "Withdrawal Rejected",
+                f"Your withdrawal request of Rs.{withdrawal.amount} has been rejected",
+                {"withdrawal_id": str(withdrawal.id), "type": "withdrawal_rejected"}
+            )
             return Response({"message": "Withdrawal rejected and amount refunded to wallet"})
         
         return Response({"error": "Invalid action. Use 'approve' or 'reject'"}, status=400)

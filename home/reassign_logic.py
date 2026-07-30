@@ -46,6 +46,14 @@ def final_cancel_check(booking_id):
             
             # Refund
             refund_booking(booking)
+
+            from .fcm import notify_user
+            notify_user(
+                booking.customer,
+                "Booking Auto-Cancelled",
+                f"Booking #{booking.id} was cancelled due to no available servicemen. You have been fully refunded.",
+                {"booking_id": str(booking.id), "type": "booking_auto_cancelled"}
+            )
     close_old_connections()
 
 def reassign_check(booking_id):
@@ -83,7 +91,16 @@ def reassign_check(booking_id):
                 # Assign to the first nearby one
                 booking.serviceman = nearby_servicemen[0]
                 booking.save(update_fields=['serviceman'])
-            
+
+                from .fcm import notify_user
+                if booking.serviceman and booking.serviceman.user:
+                    notify_user(
+                        booking.serviceman.user,
+                        "Booking Reassigned",
+                        f"Booking #{booking.id} has been reassigned to you",
+                        {"booking_id": str(booking.id), "type": "booking_reassigned"}
+                    )
+
             # Start the 180s timer for final check (270s total)
             threading.Thread(target=final_cancel_check, args=(booking_id,), daemon=True).start()
     close_old_connections()
